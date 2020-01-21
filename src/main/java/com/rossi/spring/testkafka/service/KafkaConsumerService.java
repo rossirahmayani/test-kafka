@@ -1,7 +1,5 @@
 package com.rossi.spring.testkafka.service;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.rossi.spring.testkafka.common.GlobalConstant;
 import com.rossi.spring.testkafka.common.JsonUtils;
 import com.rossi.spring.testkafka.model.TestRequest;

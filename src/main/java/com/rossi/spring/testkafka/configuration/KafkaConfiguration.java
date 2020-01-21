@@ -32,7 +32,6 @@ public class KafkaConfiguration {
         config.put(ConsumerConfig.GROUP_ID_CONFIG, GROUP_ID);
         config.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
         config.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
-
         return new DefaultKafkaConsumerFactory<>(config);
     }
 
@@ -50,12 +49,12 @@ public class KafkaConfiguration {
         config.put(ConsumerConfig.GROUP_ID_CONFIG, GROUP_JSON);
         config.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
         config.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class);
-        return new DefaultKafkaConsumerFactory<String, TestRequest>(config, new StringDeserializer(), new JsonDeserializer<>(TestRequest.class));
+        return new DefaultKafkaConsumerFactory<>(config, new StringDeserializer(), new JsonDeserializer<>(TestRequest.class));
     }
 
     @Bean
     public ConcurrentKafkaListenerContainerFactory testRequestKafkaListenerContainerFactory(){
-        ConcurrentKafkaListenerContainerFactory<String, TestRequest > factory = new ConcurrentKafkaListenerContainerFactory<>();
+        ConcurrentKafkaListenerContainerFactory<String, TestRequest> factory = new ConcurrentKafkaListenerContainerFactory<>();
         factory.setConsumerFactory(testRequestConsumerFactory());
         return factory;
     }
