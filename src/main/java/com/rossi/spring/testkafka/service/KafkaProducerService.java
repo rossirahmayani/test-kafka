@@ -5,7 +5,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
-
 import static com.rossi.spring.testkafka.common.GlobalConstant.TOPIC;
 import static com.rossi.spring.testkafka.common.GlobalConstant.TOPIC_JSON;
 

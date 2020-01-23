@@ -10,7 +10,6 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 @Controller
-@RequestMapping("kafka")
 @Slf4j
 public class KafkaController {
 
@@ -26,9 +25,9 @@ public class KafkaController {
 
     //REQUEST OBJECT
     @PostMapping("/publishJson")
-    public ResponseEntity<TestRequest> post(@Validated TestRequest request){
+    public ResponseEntity<String> post(@Validated TestRequest request){
         kafkaProducerService.sendRequest(request);
-        return ResponseEntity.ok(request);
+        return ResponseEntity.ok("Published JSON Successfully");
     }
 
 }

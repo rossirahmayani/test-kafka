@@ -10,6 +10,7 @@ import java.io.Serializable;
 @AllArgsConstructor
 @NoArgsConstructor
 public class TestRequest {
-    private String name;
-    private String dept;
+    private String from;
+    private String to;
+    private String message;
 }
