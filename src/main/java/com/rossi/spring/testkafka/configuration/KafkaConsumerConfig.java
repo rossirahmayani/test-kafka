@@ -65,7 +65,7 @@ public class KafkaConsumerConfig {
     }
 
     @Bean
-    public ConcurrentKafkaListenerContainerFactory testRequestKafkaListenerContainerFactory(KafkaTemplate kafkaTemplateDLT){
+    public ConcurrentKafkaListenerContainerFactory<String, TestRequest> testRequestKafkaListenerContainerFactory(KafkaTemplate kafkaTemplateDLT){
         FixedBackOffPolicy fixedBackOffPolicy = new FixedBackOffPolicy();
         fixedBackOffPolicy.setBackOffPeriod(1000L);
 
@@ -89,7 +89,7 @@ public class KafkaConsumerConfig {
 
     //JSON DLT
     @Bean
-    public ConcurrentKafkaListenerContainerFactory testRequestKafkaListenerContainerFactoryDlt(){
+    public ConcurrentKafkaListenerContainerFactory<String, TestRequest> testRequestKafkaListenerContainerFactoryDlt(){
         FixedBackOffPolicy fixedBackOffPolicy = new FixedBackOffPolicy();
         fixedBackOffPolicy.setBackOffPeriod(1000L);
 
