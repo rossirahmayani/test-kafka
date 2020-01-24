@@ -21,8 +21,15 @@ public class KafkaConsumerService {
     }
 
     @KafkaListener(topics = TOPIC_JSON, groupId = GROUP_JSON, containerFactory = "testRequestKafkaListenerContainerFactory")
-    public void consume(TestRequest request) {
+    public void consumeJson(TestRequest request) {
         String requestJson = jsonUtils.toJsonString(request);
         log.info("Consumed json message: "+ requestJson);
+    }
+
+    @KafkaListener(topics = TOPIC_JSON +".DLT", groupId = DLT_JSON, containerFactory = "testRequestKafkaListenerContainerFactoryDlt")
+    public void consumeDlt(TestRequest request) {
+        String requestJson = jsonUtils.toJsonString(request);
+        log.info("Consumed DLT message: "+ requestJson);
+        consumeJson(request);
     }
 }
