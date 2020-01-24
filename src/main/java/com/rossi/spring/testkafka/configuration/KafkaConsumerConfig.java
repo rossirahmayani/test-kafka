@@ -65,7 +65,7 @@ public class KafkaConsumerConfig {
     }
 
     @Bean
-    public ConcurrentKafkaListenerContainerFactory<String, TestRequest> testRequestKafkaListenerContainerFactory(KafkaTemplate kafkaTemplateDLT){
+    public ConcurrentKafkaListenerContainerFactory<String, Object> testRequestKafkaListenerContainerFactory(KafkaTemplate kafkaTemplateDLT){
         FixedBackOffPolicy fixedBackOffPolicy = new FixedBackOffPolicy();
         fixedBackOffPolicy.setBackOffPeriod(1000L);
 
@@ -76,7 +76,7 @@ public class KafkaConsumerConfig {
         retryTemplate.setBackOffPolicy(fixedBackOffPolicy);
         retryTemplate.setRetryPolicy(retryPolicy);
 
-        ConcurrentKafkaListenerContainerFactory<String, TestRequest> factory = new ConcurrentKafkaListenerContainerFactory<>();
+        ConcurrentKafkaListenerContainerFactory<String, Object> factory = new ConcurrentKafkaListenerContainerFactory<>();
         factory.setConsumerFactory(testRequestConsumerFactory());
         factory.getContainerProperties().setAckMode(ContainerProperties.AckMode.MANUAL_IMMEDIATE);
         factory.getContainerProperties().setAckOnError(false);
@@ -89,7 +89,7 @@ public class KafkaConsumerConfig {
 
     //JSON DLT
     @Bean
-    public ConcurrentKafkaListenerContainerFactory<String, TestRequest> testRequestKafkaListenerContainerFactoryDlt(){
+    public ConcurrentKafkaListenerContainerFactory<String, Object> testRequestKafkaListenerContainerFactoryDlt(){
         FixedBackOffPolicy fixedBackOffPolicy = new FixedBackOffPolicy();
         fixedBackOffPolicy.setBackOffPeriod(1000L);
 
@@ -97,7 +97,7 @@ public class KafkaConsumerConfig {
         retryTemplate.setRetryPolicy(new AlwaysRetryPolicy());
         retryTemplate.setBackOffPolicy(fixedBackOffPolicy);
 
-        ConcurrentKafkaListenerContainerFactory<String, TestRequest> factory = new ConcurrentKafkaListenerContainerFactory<>();
+        ConcurrentKafkaListenerContainerFactory<String, Object> factory = new ConcurrentKafkaListenerContainerFactory<>();
         factory.setConsumerFactory(testRequestConsumerFactory());
         factory.getContainerProperties().setAckMode(ContainerProperties.AckMode.MANUAL_IMMEDIATE);
         factory.getContainerProperties().setAckOnError(false);
