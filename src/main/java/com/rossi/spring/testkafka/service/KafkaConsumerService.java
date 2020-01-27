@@ -5,6 +5,7 @@ import com.rossi.spring.testkafka.model.TestRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.stereotype.Service;
 import static com.rossi.spring.testkafka.common.GlobalConstant.*;
 
@@ -21,15 +22,16 @@ public class KafkaConsumerService {
     }
 
     @KafkaListener(topics = TOPIC_JSON, groupId = GROUP_JSON, containerFactory = "testRequestKafkaListenerContainerFactory")
-    public void consumeJson(TestRequest request) {
+    public void consumeJson(TestRequest request,  Acknowledgment acknowledgment) {
         String requestJson = jsonUtils.toJsonString(request);
         log.info("Consumed json message: "+ requestJson);
+        acknowledgment.acknowledge();
     }
 
     @KafkaListener(topics = TOPIC_JSON +".DLT", groupId = DLT_JSON, containerFactory = "testRequestKafkaListenerContainerFactoryDlt")
-    public void consumeDlt(TestRequest request) {
+    public void consumeDlt(TestRequest request, Acknowledgment acknowledgment) {
         String requestJson = jsonUtils.toJsonString(request);
         log.info("Consumed DLT message: "+ requestJson);
-        consumeJson(request);
+        consumeJson(request, acknowledgment);
     }
 }
