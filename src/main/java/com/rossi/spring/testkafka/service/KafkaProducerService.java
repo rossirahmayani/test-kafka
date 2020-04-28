@@ -1,7 +1,6 @@
 package com.rossi.spring.testkafka.service;
 
 import com.rossi.spring.testkafka.common.JsonUtils;
-import com.rossi.spring.testkafka.model.TestRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.kafka.core.KafkaTemplate;
@@ -16,7 +15,6 @@ public class KafkaProducerService {
     @Autowired
     private JsonUtils jsonUtils;
 
-
     @Autowired
     private KafkaTemplate<String, String> kafkaTemplate;
 
@@ -26,6 +24,7 @@ public class KafkaProducerService {
 
     public void sendRequest (Object request){
         String requestJson = jsonUtils.toJsonString(request);
+        log.info("Send Kafka: {}", requestJson);
         kafkaTemplate.send(TOPIC_JSON, requestJson);
     }
 }

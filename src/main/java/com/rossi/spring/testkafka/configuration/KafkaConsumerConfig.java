@@ -1,5 +1,6 @@
 package com.rossi.spring.testkafka.configuration;
 
+import com.rossi.spring.testkafka.exception.KafkaErrorHandler;
 import com.rossi.spring.testkafka.model.TestRequest;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.serialization.StringDeserializer;
@@ -14,6 +15,7 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.listener.ContainerProperties;
 import org.springframework.kafka.listener.DeadLetterPublishingRecoverer;
 import org.springframework.kafka.listener.SeekToCurrentErrorHandler;
+import org.springframework.kafka.support.serializer.ErrorHandlingDeserializer2;
 import org.springframework.kafka.support.serializer.JsonDeserializer;
 import org.springframework.retry.backoff.FixedBackOffPolicy;
 import org.springframework.retry.policy.AlwaysRetryPolicy;
@@ -41,7 +43,6 @@ public class KafkaConsumerConfig {
     public ConsumerFactory<String, String> consumerFactory() {
         Map<String, Object> config = new HashMap<>();
         config.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaBootStrapServer);
-        config.put(ConsumerConfig.GROUP_ID_CONFIG, GROUP_ID);
         config.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
         config.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
         return new DefaultKafkaConsumerFactory<>(config);
@@ -55,19 +56,16 @@ public class KafkaConsumerConfig {
     }
 
     @Bean //JSON REQUEST
-    public ConsumerFactory<String, Object> testRequestConsumerFactory(){
+    public ConsumerFactory<String, Object> testRequestConsumerFactory() {
         Map<String, Object> config = new HashMap<>();
         config.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaBootStrapServer);
-        config.put(ConsumerConfig.GROUP_ID_CONFIG, GROUP_JSON);
-        config.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);
-        config.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
         config.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
         config.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class);
         return new DefaultKafkaConsumerFactory(config, new StringDeserializer(), new JsonDeserializer<>(TestRequest.class));
     }
 
     @Bean
-    public ConcurrentKafkaListenerContainerFactory<String, Object> testRequestKafkaListenerContainerFactory(KafkaTemplate kafkaTemplateDLT){
+    public ConcurrentKafkaListenerContainerFactory<String, Object> testRequestKafkaListenerContainerFactory(KafkaTemplate kafkaTemplateDlt){
         FixedBackOffPolicy fixedBackOffPolicy = new FixedBackOffPolicy();
         fixedBackOffPolicy.setBackOffPeriod(1000L);
 
@@ -83,8 +81,7 @@ public class KafkaConsumerConfig {
         factory.getContainerProperties().setAckMode(ContainerProperties.AckMode.MANUAL_IMMEDIATE);
         factory.getContainerProperties().setAckOnError(false);
         factory.getContainerProperties().setSyncCommits(true);
-        factory.setErrorHandler(new SeekToCurrentErrorHandler(
-                new DeadLetterPublishingRecoverer(kafkaTemplateDLT), new FixedBackOff(0, maxRetry)));
+        factory.setErrorHandler(new KafkaErrorHandler(kafkaTemplateDlt, maxRetry));
         factory.setRetryTemplate(retryTemplate);
         return factory;
     }
@@ -94,13 +91,12 @@ public class KafkaConsumerConfig {
     public ConcurrentKafkaListenerContainerFactory<String, Object> testRequestKafkaListenerContainerFactoryDlt(){
         FixedBackOffPolicy fixedBackOffPolicy = new FixedBackOffPolicy();
         fixedBackOffPolicy.setBackOffPeriod(2000L);
-
         RetryTemplate retryTemplate = new RetryTemplate();
         retryTemplate.setRetryPolicy(new AlwaysRetryPolicy());
         retryTemplate.setBackOffPolicy(fixedBackOffPolicy);
-
         ConcurrentKafkaListenerContainerFactory<String, Object> factory = new ConcurrentKafkaListenerContainerFactory<>();
         factory.setConsumerFactory(testRequestConsumerFactory());
+        factory.setConcurrency(1);
         factory.getContainerProperties().setAckMode(ContainerProperties.AckMode.MANUAL_IMMEDIATE);
         factory.getContainerProperties().setAckOnError(false);
         factory.getContainerProperties().setSyncCommits(true);
