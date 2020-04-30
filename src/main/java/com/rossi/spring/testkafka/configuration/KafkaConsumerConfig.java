@@ -13,15 +13,11 @@ import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.listener.ContainerProperties;
-import org.springframework.kafka.listener.DeadLetterPublishingRecoverer;
-import org.springframework.kafka.listener.SeekToCurrentErrorHandler;
 import org.springframework.kafka.support.serializer.ErrorHandlingDeserializer2;
 import org.springframework.kafka.support.serializer.JsonDeserializer;
 import org.springframework.retry.backoff.FixedBackOffPolicy;
 import org.springframework.retry.policy.AlwaysRetryPolicy;
-import org.springframework.retry.policy.SimpleRetryPolicy;
 import org.springframework.retry.support.RetryTemplate;
-import org.springframework.util.backoff.FixedBackOff;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -40,9 +36,10 @@ public class KafkaConsumerConfig {
     private Integer maxRetry;
 
     @Bean //STRING
-    public ConsumerFactory<String, String> consumerFactory() {
+    protected ConsumerFactory<String, String> consumerFactory() {
         Map<String, Object> config = new HashMap<>();
         config.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaBootStrapServer);
+        config.put(ConsumerConfig.GROUP_ID_CONFIG, GROUP_ID);
         config.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
         config.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
         return new DefaultKafkaConsumerFactory<>(config);
@@ -56,33 +53,28 @@ public class KafkaConsumerConfig {
     }
 
     @Bean //JSON REQUEST
-    public ConsumerFactory<String, Object> testRequestConsumerFactory() {
+    protected ConsumerFactory<String, Object> testRequestConsumerFactory() {
         Map<String, Object> config = new HashMap<>();
         config.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaBootStrapServer);
+        config.put(ConsumerConfig.GROUP_ID_CONFIG, GROUP_JSON);
         config.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
         config.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class);
-        return new DefaultKafkaConsumerFactory(config, new StringDeserializer(), new JsonDeserializer<>(TestRequest.class));
+        config.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+        config.put(ConsumerConfig.REQUEST_TIMEOUT_MS_CONFIG, 5000);
+        config.put(ConsumerConfig.RETRY_BACKOFF_MS_CONFIG, 1000);
+        return new DefaultKafkaConsumerFactory(config,
+                new ErrorHandlingDeserializer2(new StringDeserializer()),
+                new ErrorHandlingDeserializer2(new JsonDeserializer<>(TestRequest.class)));
     }
 
     @Bean
     public ConcurrentKafkaListenerContainerFactory<String, Object> testRequestKafkaListenerContainerFactory(KafkaTemplate kafkaTemplateDlt){
-        FixedBackOffPolicy fixedBackOffPolicy = new FixedBackOffPolicy();
-        fixedBackOffPolicy.setBackOffPeriod(1000L);
-
-        SimpleRetryPolicy retryPolicy = new SimpleRetryPolicy();
-        retryPolicy.setMaxAttempts(maxRetry);
-
-        RetryTemplate retryTemplate = new RetryTemplate();
-        retryTemplate.setBackOffPolicy(fixedBackOffPolicy);
-        retryTemplate.setRetryPolicy(retryPolicy);
-
         ConcurrentKafkaListenerContainerFactory<String, Object> factory = new ConcurrentKafkaListenerContainerFactory<>();
         factory.setConsumerFactory(testRequestConsumerFactory());
         factory.getContainerProperties().setAckMode(ContainerProperties.AckMode.MANUAL_IMMEDIATE);
         factory.getContainerProperties().setAckOnError(false);
         factory.getContainerProperties().setSyncCommits(true);
         factory.setErrorHandler(new KafkaErrorHandler(kafkaTemplateDlt, maxRetry));
-        factory.setRetryTemplate(retryTemplate);
         return factory;
     }
 
