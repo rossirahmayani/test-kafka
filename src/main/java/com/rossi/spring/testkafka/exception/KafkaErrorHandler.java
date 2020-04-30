@@ -75,6 +75,7 @@ public class KafkaErrorHandler implements ContainerAwareErrorHandler {
                     .ifPresent(c -> partitions.computeIfAbsent(new TopicPartition(c.topic(), c.partition()), tp -> c.offset()));
             first.set(false);
         });
+        partitions.forEach(consumer::seek);
         return skipped.get();
     }
 
