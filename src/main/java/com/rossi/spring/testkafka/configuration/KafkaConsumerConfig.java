@@ -46,11 +46,31 @@ public class KafkaConsumerConfig {
     }
 
     @Bean
-    public ConcurrentKafkaListenerContainerFactory<String, String> kafkaListenerContainerFactory(){
+    public ConcurrentKafkaListenerContainerFactory<String, String> kafkaListenerContainerFactory(KafkaTemplate kafkaTemplateDlt){
         ConcurrentKafkaListenerContainerFactory<String, String> factory = new ConcurrentKafkaListenerContainerFactory<>();
         factory.setConsumerFactory(consumerFactory());
+        factory.setErrorHandler(new KafkaErrorHandler(kafkaTemplateDlt, maxRetry));
         return factory;
     }
+
+    //STRING DLT
+    @Bean
+    public ConcurrentKafkaListenerContainerFactory<String, String> kafkaListenerContainerFactoryDlt(){
+        FixedBackOffPolicy fixedBackOffPolicy = new FixedBackOffPolicy();
+        fixedBackOffPolicy.setBackOffPeriod(2000L);
+        RetryTemplate retryTemplate = new RetryTemplate();
+        retryTemplate.setRetryPolicy(new AlwaysRetryPolicy());
+        retryTemplate.setBackOffPolicy(fixedBackOffPolicy);
+        ConcurrentKafkaListenerContainerFactory<String, String> factory = new ConcurrentKafkaListenerContainerFactory<>();
+        factory.setConsumerFactory(consumerFactory());
+        factory.setConcurrency(1);
+        factory.getContainerProperties().setAckMode(ContainerProperties.AckMode.MANUAL_IMMEDIATE);
+        factory.getContainerProperties().setAckOnError(false);
+        factory.getContainerProperties().setSyncCommits(true);
+        factory.setRetryTemplate(retryTemplate);
+        return factory;
+    }
+
 
     @Bean //JSON REQUEST
     protected ConsumerFactory<String, Object> testRequestConsumerFactory() {
@@ -68,13 +88,13 @@ public class KafkaConsumerConfig {
     }
 
     @Bean
-    public ConcurrentKafkaListenerContainerFactory<String, Object> testRequestKafkaListenerContainerFactory(KafkaTemplate kafkaTemplateDlt){
+    public ConcurrentKafkaListenerContainerFactory<String, Object> testRequestKafkaListenerContainerFactory(KafkaTemplate kafkaTemplateJsonDlt){
         ConcurrentKafkaListenerContainerFactory<String, Object> factory = new ConcurrentKafkaListenerContainerFactory<>();
         factory.setConsumerFactory(testRequestConsumerFactory());
         factory.getContainerProperties().setAckMode(ContainerProperties.AckMode.MANUAL_IMMEDIATE);
         factory.getContainerProperties().setAckOnError(false);
         factory.getContainerProperties().setSyncCommits(true);
-        factory.setErrorHandler(new KafkaErrorHandler(kafkaTemplateDlt, maxRetry));
+        factory.setErrorHandler(new KafkaErrorHandler(kafkaTemplateJsonDlt, maxRetry));
         return factory;
     }
 

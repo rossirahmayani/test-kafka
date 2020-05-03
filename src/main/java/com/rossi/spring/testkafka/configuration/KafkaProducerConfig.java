@@ -51,6 +51,16 @@ public class KafkaProducerConfig {
     }
 
     @Bean
+    protected ProducerFactory<Object, Object> producerFactoryDlt(){
+        return new DefaultKafkaProducerFactory<>(props());
+    }
+
+    @Bean
+    public KafkaTemplate<Object, Object> kafkaTemplateDlt(){
+        return new KafkaTemplate<>(producerFactoryDlt());
+    }
+
+    @Bean
     protected ProducerFactory<String, TestRequest> producerFactoryJson(){
         return new DefaultKafkaProducerFactory<>(propsJson());
     }
@@ -61,12 +71,12 @@ public class KafkaProducerConfig {
     }
 
     @Bean
-    protected ProducerFactory<Object, Object> producerFactoryDlt(){
+    protected ProducerFactory<Object, Object> producerFactoryJsonDlt(){
         return new DefaultKafkaProducerFactory<>(propsJson());
     }
 
     @Bean
-    public KafkaTemplate<Object, Object> kafkaTemplateDlt(){
-        return new KafkaTemplate<>(producerFactoryDlt());
+    public KafkaTemplate<Object, Object> kafkaTemplateJsonDlt(){
+        return new KafkaTemplate<>(producerFactoryJsonDlt());
     }
 }

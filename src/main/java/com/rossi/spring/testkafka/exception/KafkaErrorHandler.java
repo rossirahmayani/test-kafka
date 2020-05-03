@@ -10,7 +10,9 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.listener.ContainerAwareErrorHandler;
 import org.springframework.kafka.listener.DeadLetterPublishingRecoverer;
 import org.springframework.kafka.listener.MessageListenerContainer;
+import org.springframework.kafka.listener.SeekToCurrentErrorHandler;
 import org.springframework.kafka.support.serializer.DeserializationException;
+import org.springframework.util.backoff.FixedBackOff;
 
 import java.time.temporal.ValueRange;
 import java.util.LinkedHashMap;
@@ -20,6 +22,7 @@ import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
+import java.util.function.Predicate;
 
 @Slf4j
 public class KafkaErrorHandler implements ContainerAwareErrorHandler {
@@ -105,11 +108,9 @@ public class KafkaErrorHandler implements ContainerAwareErrorHandler {
     }
 
     private boolean setFailureRecord(ConsumerRecord<?, ?> record, KafkaFailedRecordDto failedRecordDto){
-        Optional.of(failedRecordDto)
-                .filter(k -> k == null || this.newFailure(record, k))
-                .ifPresent(f -> this.failureRecord.set(KafkaFailedRecordDto.builder().topic(record.topic()).partition(record.partition())
-                        .offset(record.offset()).count(1).build()));
-
+        Predicate<KafkaFailedRecordDto> check = c -> (c == null || this.newFailure(record, c));
+        Optional.of(check.test(failedRecordDto))
+                .ifPresent(f -> this.failureRecord.set(KafkaFailedRecordDto.builder().topic(record.topic()).partition(record.partition()).offset(record.offset()).count(1).build()));
         return false;
     }
 
