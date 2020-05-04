@@ -10,15 +10,10 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.listener.ContainerAwareErrorHandler;
 import org.springframework.kafka.listener.DeadLetterPublishingRecoverer;
 import org.springframework.kafka.listener.MessageListenerContainer;
-import org.springframework.kafka.listener.SeekToCurrentErrorHandler;
 import org.springframework.kafka.support.serializer.DeserializationException;
-import org.springframework.util.backoff.FixedBackOff;
 
 import java.time.temporal.ValueRange;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
@@ -26,31 +21,33 @@ import java.util.function.Predicate;
 
 @Slf4j
 public class KafkaErrorHandler implements ContainerAwareErrorHandler {
-    private ThreadLocal<KafkaFailedRecordDto> failureRecord = new ThreadLocal();
+    private static final ThreadLocal<KafkaFailedRecordDto> failureRecord = new ThreadLocal();
     private final BiConsumer<ConsumerRecord<?, ?>, Exception> recovererDLT;
     private final BiConsumer<ConsumerRecord<?, ?>, Exception> recovererDET;
     private final Boolean noRetries;
     private final Integer maxFailures;
 
     public KafkaErrorHandler(KafkaTemplate<?, ?> template, Integer maxFailures){
-        BiFunction<ConsumerRecord<?, ?>, Exception, TopicPartition> destinationDLTResolver = (cr, e) -> new TopicPartition(cr.topic() + ".DLT", cr.partition());
-        BiFunction<ConsumerRecord<?, ?>, Exception, TopicPartition> destinationDETResolver = (cr, e) -> new TopicPartition(cr.topic() + ".DET", cr.partition());
+        BiFunction<ConsumerRecord<?, ?>, Exception, TopicPartition> destinationDLTResolver = (cr, e) -> new TopicPartition(cr.topic() +".DLT", cr.partition());
+        BiFunction<ConsumerRecord<?, ?>, Exception, TopicPartition> destinationDETResolver = (cr, e) -> new TopicPartition(cr.topic() +".DET", cr.partition());
         this.maxFailures = maxFailures;
         recovererDLT = new DeadLetterPublishingRecoverer(template, destinationDLTResolver);
         recovererDET = new DeadLetterPublishingRecoverer(template, destinationDETResolver);
         this.noRetries = ValueRange.of(0L, 1L).isValidIntValue((long) maxFailures);
-        this.failureRecord.remove();
+        failureRecord.remove();
     }
 
     @Override
     public void handle(Exception e, List<ConsumerRecord<?, ?>> records, Consumer<?, ?> consumer, MessageListenerContainer messageListenerContainer){
+        Predicate<Exception> checkDet = x -> x instanceof DeserializationException;
+        Predicate<Exception> checkClassCast = x -> x instanceof ClassCastException;
+        Predicate<Exception> checkOtherDet = this::isDeserializationExceptionOrClassCastExceptionFound;
         Optional.of(e)
-                .filter(x -> x instanceof DeserializationException || x instanceof ClassCastException || isDeserializationExceptionOrClassCastExceptionFound(x))
+                .filter(x -> checkDet.or(checkClassCast).or(checkOtherDet).test(x))
                 .ifPresentOrElse(c -> doRecoverDET(records, c, consumer),
-                        () -> Optional.of(e).
-                                filter(x -> !doSeeks(records, consumer, x, true))
+                        () -> Optional.of(e)
+                                .filter(x -> !doSeeks(records, consumer, x, true))
                                 .ifPresent(c -> {throw new KafkaException("Seek to current after exception", c);}));
-
     }
 
     private void doRecoverDET(List<ConsumerRecord<?, ?>> records, Exception exception, Consumer<?, ?> consumer) {
@@ -69,12 +66,15 @@ public class KafkaErrorHandler implements ContainerAwareErrorHandler {
         Map<TopicPartition, Long> partitions = new LinkedHashMap();
         AtomicBoolean first = new AtomicBoolean(true);
         AtomicBoolean skipped = new AtomicBoolean();
+        Predicate<ConsumerRecord<?,?>> checkRecover = r -> recoverable;
+        Predicate<ConsumerRecord<?,?>> checkFirst = r -> first.get();
+        Predicate<ConsumerRecord<?,?>> checkSkippedNegate = r -> !skipped.get();
         records.forEach(record -> {
             Optional.ofNullable(record)
-                    .filter(r -> recoverable && first.get())
+                    .filter(r -> checkRecover.and(checkFirst).test(r))
                     .ifPresent(c -> skipped.set(doRecover(c, exception)));
             Optional.ofNullable(record)
-                    .filter(r -> !recoverable || !first.get() || !skipped.get())
+                    .filter(r -> checkRecover.negate().or(checkFirst.negate()).or(checkSkippedNegate).test(r))
                     .ifPresent(c -> partitions.computeIfAbsent(new TopicPartition(c.topic(), c.partition()), tp -> c.offset()));
             first.set(false);
         });
@@ -82,41 +82,60 @@ public class KafkaErrorHandler implements ContainerAwareErrorHandler {
         return skipped.get();
     }
 
-    private boolean doRecover(ConsumerRecord<?, ?> record, Exception exception){
-        KafkaFailedRecordDto failedRecord = this.failureRecord.get();
+    public boolean doRecover(ConsumerRecord<?, ?> record, Exception exception){
+        Predicate<KafkaFailedRecordDto> checkRetry = f -> this.noRetries;
+        KafkaFailedRecordDto failedRecord = Optional.ofNullable(failureRecord.get()).orElse(null);
+        boolean checkMaxFail = checkMaxFail(failedRecord) ;
         return Optional.ofNullable(failedRecord)
-                .filter(f -> this.noRetries || (this.maxFailures > 0 && failedRecord.doIncrementAndGet() >= this.maxFailures) )
+                .filter(checkRetry)
                 .map(c -> acceptDlt(record, exception))
-                .orElseGet(() -> setFailureRecord(record, failedRecord));
+                .orElseGet(() ->
+                        Optional.ofNullable(failedRecord).filter(f -> checkMaxFail)
+                                .map(c -> acceptDlt(record, exception))
+                                .orElseGet(() -> setFailureRecord(record, Optional.ofNullable(failureRecord.get()).orElse(null)))
+                );
     }
 
-    private boolean acceptDlt(ConsumerRecord<?, ?> record, Exception exception){
+    public boolean acceptDlt(ConsumerRecord<?, ?> record, Exception exception){
         log.info("RECOVER DLT");
         this.recovererDLT.accept(record, exception);
         return true;
     }
 
-    private boolean isDeserializationExceptionOrClassCastExceptionFound(Exception e) {
+    public boolean isDeserializationExceptionOrClassCastExceptionFound(Exception e) {
         Throwable rootCause = e.getCause();
-        Boolean isDeserializationExceptionOrClassCastException = rootCause instanceof DeserializationException || rootCause instanceof ClassCastException;
-        while (!isDeserializationExceptionOrClassCastException && rootCause.getCause() != null) { isDeserializationExceptionOrClassCastException = rootCause.getCause() instanceof DeserializationException || rootCause.getCause() instanceof ClassCastException; }
+        Predicate<Throwable> getDet = x -> x instanceof DeserializationException;
+        Predicate<Throwable> getClassCast = x -> x instanceof ClassCastException;
+
+        boolean isDeserializationExceptionOrClassCastException = getDet.or(getClassCast).test(rootCause);
+        while (!isDeserializationExceptionOrClassCastException && Optional.ofNullable(rootCause.getCause()).isPresent()){ isDeserializationExceptionOrClassCastException = getDet.or(getClassCast).test(rootCause.getCause()); }
         return isDeserializationExceptionOrClassCastException;
     }
 
-    private boolean newFailure(ConsumerRecord<?, ?> record, KafkaFailedRecordDto failedRecordDTO) {
-        return !failedRecordDTO.getTopic().equals(record.topic()) || failedRecordDTO.getPartition() != record.partition() || failedRecordDTO.getOffset() != record.offset();
+    public boolean newFailure(ConsumerRecord<?, ?> record, KafkaFailedRecordDto failedRecordDTO) {
+        Predicate<KafkaFailedRecordDto> checkTopicDiff = x -> !x.getTopic().equals(record.topic());
+        Predicate<KafkaFailedRecordDto> checkPartitionDiff = x -> x.getPartition() != record.partition();
+        Predicate<KafkaFailedRecordDto> checkOffsetDiff = x -> x.getOffset() != record.offset();
+        return checkTopicDiff.or(checkPartitionDiff).or(checkOffsetDiff).test(failedRecordDTO);
     }
 
-    private boolean setFailureRecord(ConsumerRecord<?, ?> record, KafkaFailedRecordDto failedRecordDto){
-        Predicate<KafkaFailedRecordDto> check = c -> (c == null || this.newFailure(record, c));
-        Optional.of(check.test(failedRecordDto))
-                .ifPresent(f -> this.failureRecord.set(KafkaFailedRecordDto.builder().topic(record.topic()).partition(record.partition()).offset(record.offset()).count(1).build()));
+    public boolean setFailureRecord(ConsumerRecord<?, ?> record, KafkaFailedRecordDto failedRecordDto){
+        Predicate<KafkaFailedRecordDto> checkNull = Objects::isNull;
+        Predicate<KafkaFailedRecordDto> checkNewFailure = c -> this.newFailure(record, c);
+        Optional.of(checkNull.or(checkNewFailure).test(failedRecordDto))
+                .ifPresent(f -> failureRecord.set(KafkaFailedRecordDto.builder().topic(record.topic()).partition(record.partition()).offset(record.offset()).count(1).build()));
         return false;
+    }
+
+    public boolean checkMaxFail(KafkaFailedRecordDto kafkaFailedRecordDto) {
+        return Optional.ofNullable(kafkaFailedRecordDto)
+                .filter(r -> this.maxFailures > 0)
+                .filter(k -> k.doIncrementAndGet() >= this.maxFailures)
+                .isPresent();
     }
 
     @Override
     public void clearThreadState() {
-        this.failureRecord.remove();
+        failureRecord.remove();
     }
-
 }
