@@ -108,7 +108,9 @@ public class KafkaErrorHandler implements ContainerAwareErrorHandler {
         Predicate<Throwable> getClassCast = x -> x instanceof ClassCastException;
 
         boolean isDeserializationExceptionOrClassCastException = getDet.or(getClassCast).test(rootCause);
-        while (!isDeserializationExceptionOrClassCastException && Optional.ofNullable(rootCause.getCause()).isPresent()){ isDeserializationExceptionOrClassCastException = getDet.or(getClassCast).test(rootCause.getCause()); }
+        while (!isDeserializationExceptionOrClassCastException && Optional.ofNullable(rootCause.getCause()).isPresent()){
+            isDeserializationExceptionOrClassCastException = getDet.or(getClassCast).test(rootCause.getCause());
+        }
         return isDeserializationExceptionOrClassCastException;
     }
 

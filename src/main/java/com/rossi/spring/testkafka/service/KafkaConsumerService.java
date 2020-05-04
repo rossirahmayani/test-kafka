@@ -8,8 +8,6 @@ import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.stereotype.Service;
 
-import java.util.function.Predicate;
-
 import static com.rossi.spring.testkafka.common.GlobalConstant.*;
 
 @Service

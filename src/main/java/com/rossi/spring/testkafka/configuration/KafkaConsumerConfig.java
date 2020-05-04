@@ -71,7 +71,6 @@ public class KafkaConsumerConfig {
         return factory;
     }
 
-
     @Bean //JSON REQUEST
     protected ConsumerFactory<String, Object> testRequestConsumerFactory() {
         Map<String, Object> config = new HashMap<>();
