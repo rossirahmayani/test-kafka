@@ -49,7 +49,7 @@ public class KafkaConsumerConfig {
     public ConcurrentKafkaListenerContainerFactory<String, String> kafkaListenerContainerFactory(KafkaTemplate kafkaTemplateDlt){
         ConcurrentKafkaListenerContainerFactory<String, String> factory = new ConcurrentKafkaListenerContainerFactory<>();
         factory.setConsumerFactory(consumerFactory());
-        factory.setErrorHandler(new KafkaErrorHandler(kafkaTemplateDlt, maxRetry));
+        factory.setErrorHandler(new KafkaErrorHandler(kafkaTemplateDlt));
         return factory;
     }
 
@@ -63,8 +63,8 @@ public class KafkaConsumerConfig {
         retryTemplate.setBackOffPolicy(fixedBackOffPolicy);
         ConcurrentKafkaListenerContainerFactory<String, String> factory = new ConcurrentKafkaListenerContainerFactory<>();
         factory.setConsumerFactory(consumerFactory());
-        factory.setConcurrency(1);
-        factory.getContainerProperties().setAckMode(ContainerProperties.AckMode.MANUAL_IMMEDIATE);
+        factory.setConcurrency(3);
+        factory.getContainerProperties().setAckMode(ContainerProperties.AckMode.RECORD);
         factory.getContainerProperties().setAckOnError(false);
         factory.getContainerProperties().setSyncCommits(true);
         factory.setRetryTemplate(retryTemplate);
@@ -93,7 +93,7 @@ public class KafkaConsumerConfig {
         factory.getContainerProperties().setAckMode(ContainerProperties.AckMode.MANUAL_IMMEDIATE);
         factory.getContainerProperties().setAckOnError(false);
         factory.getContainerProperties().setSyncCommits(true);
-        factory.setErrorHandler(new KafkaErrorHandler(kafkaTemplateJsonDlt, maxRetry));
+        factory.setErrorHandler(new KafkaErrorHandler(kafkaTemplateJsonDlt));
         return factory;
     }
 

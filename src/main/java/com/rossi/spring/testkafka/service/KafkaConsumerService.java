@@ -22,7 +22,7 @@ public class KafkaConsumerService {
         log.info("Consumed message: " + message);
     }
 
-    @KafkaListener(topics = TOPIC + ".DLT", groupId = DLT_ID, containerFactory = "kafkaListenerContainerFactoryDlt")
+    @KafkaListener(topics = TOPIC + "-dlt", groupId = GROUP_ID, containerFactory = "kafkaListenerContainerFactoryDlt")
     public void consumeDlt(String message){
         log.info("Consumed DLT message: "+ message);
         consume(message);
@@ -35,7 +35,7 @@ public class KafkaConsumerService {
         acknowledgment.acknowledge();
     }
 
-    @KafkaListener(topics = TOPIC_JSON +".DLT", groupId = DLT_JSON, containerFactory = "testRequestKafkaListenerContainerFactoryDlt")
+    @KafkaListener(topics = TOPIC_JSON +"-dlt", groupId = GROUP_JSON, containerFactory = "testRequestKafkaListenerContainerFactoryDlt")
     public void consumeDltJson(TestRequest request, Acknowledgment acknowledgment) {
         String requestJson = jsonUtils.toJsonString(request);
         log.info("Consumed DLT message: "+ requestJson);

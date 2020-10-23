@@ -1,5 +1,6 @@
 package com.rossi.spring.testkafka.configuration;
 
+import com.rossi.spring.testkafka.common.GlobalConstant;
 import com.rossi.spring.testkafka.model.TestRequest;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.StringSerializer;
@@ -26,8 +27,12 @@ public class KafkaProducerConfig {
         Map<String, Object> props = new HashMap<>();
         props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, server);
         props.put(ProducerConfig.COMPRESSION_TYPE_CONFIG, compressionType);
+        props.put(ProducerConfig.CLIENT_ID_CONFIG, GlobalConstant.GROUP_ID);
         props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
         props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
+        props.put(ProducerConfig.TRANSACTION_TIMEOUT_CONFIG, 300);
+        props.put(ProducerConfig.MAX_BLOCK_MS_CONFIG, 500);
+        props.put(ProducerConfig.REQUEST_TIMEOUT_MS_CONFIG, 300);
         return props;
     }
 
@@ -35,8 +40,12 @@ public class KafkaProducerConfig {
         Map<String, Object> props = new HashMap<>();
         props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, server);
         props.put(ProducerConfig.COMPRESSION_TYPE_CONFIG, compressionType);
+        props.put(ProducerConfig.CLIENT_ID_CONFIG, GlobalConstant.GROUP_JSON);
         props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
         props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JsonSerializer.class);
+        props.put(ProducerConfig.TRANSACTION_TIMEOUT_CONFIG, 300);
+        props.put(ProducerConfig.MAX_BLOCK_MS_CONFIG, 500);
+        props.put(ProducerConfig.REQUEST_TIMEOUT_MS_CONFIG, 300);
         return props;
     }
 
