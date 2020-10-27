@@ -21,10 +21,12 @@ import java.util.function.BiFunction;
 public class KafkaErrorHandler implements ContainerAwareErrorHandler {
     private static final ThreadLocal<KafkaFailedRecordDto> failureRecord = new ThreadLocal();
     private final BiConsumer<ConsumerRecord<?, ?>, Exception> recovererDLT;
+    private Boolean isSync;
 
-    public KafkaErrorHandler(KafkaTemplate<?, ?> template){
+    public KafkaErrorHandler(KafkaTemplate<?, ?> template, Boolean syncConfig){
         BiFunction<ConsumerRecord<?, ?>, Exception, TopicPartition> destinationDLTResolver = (cr, e) -> new TopicPartition(cr.topic() +"-dlt", cr.partition());
         recovererDLT = new DeadLetterPublishingRecoverer(template, destinationDLTResolver);
+        isSync = syncConfig;
         failureRecord.remove();
     }
 
@@ -32,10 +34,10 @@ public class KafkaErrorHandler implements ContainerAwareErrorHandler {
     public void handle(Exception e, List<ConsumerRecord<?, ?>> records, Consumer<?, ?> consumer, MessageListenerContainer messageListenerContainer){
         log.warn("Error: {}", e.getMessage());
 
-        // async
-        seek().handle(e, records, consumer, messageListenerContainer);
-        // sync
-        doRecoverDlt(records, e, consumer);
+        Optional.ofNullable(isSync)
+                .filter(s -> s.equals(Boolean.TRUE))
+                .ifPresentOrElse(sync -> doRecoverDlt(records, e, consumer), // sync
+                        () -> seek().handle(e, records, consumer, messageListenerContainer)); // async
     }
 
     private void doRecoverDlt(List<ConsumerRecord<?, ?>> records, Exception exception, Consumer<?, ?> consumer) {

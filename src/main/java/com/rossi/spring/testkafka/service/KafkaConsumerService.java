@@ -28,17 +28,19 @@ public class KafkaConsumerService {
         consume(message);
     }
 
-    @KafkaListener(topics = TOPIC_JSON, groupId = GROUP_JSON, containerFactory = "testRequestKafkaListenerContainerFactory")
-    public void consumeJson(TestRequest request,  Acknowledgment acknowledgment) {
-        String requestJson = jsonUtils.toJsonString(request);
-        log.info("Consumed json message: "+ requestJson);
+    @KafkaListener(topics = TOPIC_JSON, groupId = GROUP_ID, containerFactory = "testRequestKafkaListenerContainerFactory")
+    public void consumeJson(String request,  Acknowledgment acknowledgment) {
+        TestRequest json = jsonUtils.convertJson(request, TestRequest.class);
+        log.info("Consumed json message: "+ request);
+        log.info("FROM      : {}", json.getFrom());
+        log.info("TO        : {}", json.getTo());
+        log.info("MESSAGE   : {}", json.getMessage());
         acknowledgment.acknowledge();
     }
 
-    @KafkaListener(topics = TOPIC_JSON +"-dlt", groupId = GROUP_JSON, containerFactory = "testRequestKafkaListenerContainerFactoryDlt")
-    public void consumeDltJson(TestRequest request, Acknowledgment acknowledgment) {
-        String requestJson = jsonUtils.toJsonString(request);
-        log.info("Consumed DLT message: "+ requestJson);
+    @KafkaListener(topics = TOPIC_JSON +"-dlt", groupId = GROUP_ID, containerFactory = "testRequestKafkaListenerContainerFactoryDlt")
+    public void consumeDltJson(String request, Acknowledgment acknowledgment) {
+        log.info("Consumed DLT message: "+ request);
         consumeJson(request, acknowledgment);
     }
 }

@@ -17,19 +17,21 @@ public class KafkaProducerService {
     private JsonUtils jsonUtils;
 
     @Autowired
-    private KafkaTemplate<String,String> kafkaTemplate;
-
-    @Autowired
-    private KafkaTemplate<String,TestRequest> kafkaTemplateJson;
+    private KafkaTemplate<String,Object> kafkaTemplate;
 
     public void sendString (String message){
         log.info("Send Kafka: {}", message);
-        kafkaTemplate.send(TOPIC, message);
+        kafkaTemplate.send(TOPIC, message).addCallback(
+                res -> log.info("Messaqe [{}] sent to topic [{}], partition [{}], offset [{}] ", message, TOPIC, res.getRecordMetadata().partition(), res.getRecordMetadata().offset()),
+                throwable -> log.error("Error: [{}]", throwable.getMessage()));
     }
 
     public void sendRequest (TestRequest request){
         String requestJson = jsonUtils.toJsonString(request);
         log.info("Send Kafka Json: {}", requestJson);
-        kafkaTemplateJson.send(TOPIC_JSON, request);
+        kafkaTemplate.send(TOPIC_JSON, requestJson)
+                .addCallback(
+                        res -> log.info("Messaqe [{}] sent to topic [{}], partition [{}], offset [{}] ", requestJson, TOPIC_JSON, res.getRecordMetadata().partition(), res.getRecordMetadata().offset()),
+                        throwable -> log.error("Error: [{}]", throwable.getMessage()));
     }
 }
